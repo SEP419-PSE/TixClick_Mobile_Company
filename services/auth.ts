@@ -1,5 +1,5 @@
 export const login = async (userName: string, password: string) => {
-  try {
+
     const response = await fetch('http://160.191.175.172:8080/auth/login', {
       method: 'POST',
       headers: {
@@ -28,7 +28,5 @@ export const login = async (userName: string, password: string) => {
         code: data.code,
       };
     }
-  } catch (error) {
-    throw new Error('Network error');
-  }
+  
 };

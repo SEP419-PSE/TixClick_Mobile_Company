@@ -1,8 +1,8 @@
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useState } from 'react';
-import { login as loginService } from '../services/auth';
+import { login as loginService } from '../../services/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
@@ -31,7 +31,7 @@ export default function LoginScreen() {
         const storedRole = await AsyncStorage.getItem('role');
         console.log('Stored Token in AsyncStorage:', storedToken);
         console.log('Stored Role in AsyncStorage:', storedRole);
-        router.replace('/(root)/(tabs)/explore');
+        router.replace('/screens/ScanQr');
       } else {
         Alert.alert('Đăng nhập thất bại', res.message || 'Có lỗi xảy ra');
       }
