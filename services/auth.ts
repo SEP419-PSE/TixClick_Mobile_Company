@@ -1,6 +1,6 @@
 export const login = async (userName: string, password: string) => {
 
-    const response = await fetch('http://160.191.175.172:8080/auth/login', {
+    const response = await fetch('https://tixclick.site/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

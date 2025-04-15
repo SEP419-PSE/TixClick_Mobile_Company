@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ImageBackground } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ImageBackground, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { useState } from 'react';
@@ -12,6 +12,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // State for success modal
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -25,13 +26,17 @@ export default function LoginScreen() {
 
       if (res.success && res.data) {
         console.log('Login success');
-        Alert.alert('Đăng nhập thành công');
+        setShowSuccessModal(true); // Show success modal
+        setTimeout(() => {
+          setShowSuccessModal(false); // Hide the modal after 1 second
+          router.replace('/screens/ScanQr');
+        }, 1000); // Show modal for 1 second
+
         await saveToken(res.data.accessToken, res.data.role);
         const storedToken = await AsyncStorage.getItem('token');
         const storedRole = await AsyncStorage.getItem('role');
         console.log('Stored Token in AsyncStorage:', storedToken);
         console.log('Stored Role in AsyncStorage:', storedRole);
-        router.replace('/screens/ScanQr');
       } else {
         Alert.alert('Đăng nhập thất bại', res.message || 'Có lỗi xảy ra');
       }
@@ -96,6 +101,37 @@ export default function LoginScreen() {
             <Text className="text-center text-white font-semibold">Đăng nhập</Text>
           )}
         </TouchableOpacity>
+
+        {/* Success Modal */}
+        <Modal
+          transparent={true}
+          visible={showSuccessModal}
+          animationType="fade"
+          onRequestClose={() => setShowSuccessModal(false)}
+        >
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: '#4CAF50',
+                padding: 20,
+                borderRadius: 10,
+                width: '80%',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
+                Đăng nhập thành công!
+              </Text>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </ImageBackground>
   );
