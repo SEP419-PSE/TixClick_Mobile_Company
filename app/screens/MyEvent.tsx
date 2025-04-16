@@ -1,20 +1,19 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image, Button } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Đảm bảo đã cài thư viện này
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const EventActivityStatus = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filteredEvents, setFilteredEvents] = useState([]);
-  const [filter, setFilter] = useState('all');  // Lọc theo trạng thái: 'all', 'past', 'upcoming', 'ongoing'
+  const [filter, setFilter] = useState('all');
   const router = useRouter();
 
   useEffect(() => {
     const fetchEvents = async () => {
-      // Lấy token từ AsyncStorage
-      const token = await AsyncStorage.getItem('token'); // Đảm bảo key đúng với token bạn lưu trong AsyncStorage
+      const token = await AsyncStorage.getItem('token');
 
       if (!token) {
         console.log("No token found");
@@ -24,37 +23,43 @@ const EventActivityStatus = () => {
 
       try {
         const response = await axios.get('https://tixclick.site/api/member-activity/my-event-activities', {
-          headers: {
-            Authorization: `Bearer ${token}` // Thêm token vào header
-          }
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (response.data.code === 200) {
-          // Cập nhật dữ liệu sự kiện
           const updatedEvents = response.data.result.map(event => {
             const updatedActivities = event.eventActivities.map(activity => {
               const activityDate = new Date(`${activity.date}T${activity.startTime}`);
               const endDate = new Date(`${activity.date}T${activity.endTime}`);
+              const now = new Date();
+
               let status = '';
-
-              const today = new Date();
-
-              if (activityDate < today) {
+              if (activityDate < now) {
                 status = 'Đã qua';
-              } else if (activityDate.toDateString() === today.toDateString() && today >= activityDate && today <= endDate) {
+              }
+              if (
+                activityDate.toDateString() === now.toDateString() &&
+                now >= activityDate &&
+                now <= endDate
+              ) {
                 status = 'Đang diễn ra';
-              } else if (activityDate > today) {
+              }
+              if (activityDate > now) {
                 status = 'Sắp tới';
               }
 
-              return { ...activity, status, formattedDate: formatDate(activity.date) };
+              return {
+                ...activity,
+                status,
+                formattedDate: formatDate(activity.date),
+              };
             });
 
             return { ...event, eventActivities: updatedActivities };
           });
 
           setEvents(updatedEvents);
-          setFilteredEvents(updatedEvents); // Show all events initially
+          setFilteredEvents(updatedEvents);
         } else {
           console.log("Error fetching events: ", response.data.message);
         }
@@ -69,13 +74,21 @@ const EventActivityStatus = () => {
   }, []);
 
   const formatDate = (date) => {
-    const [year, month, day] = date.split('-');
-    return `${day}-${month}-${year}`;  // Đổi định dạng yyyy-mm-dd thành dd-mm-yyyy
+    if (!date || typeof date !== 'string') return '';
+    const parts = date.split('-');
+    if (parts.length !== 3) return '';
+    const [year, month, day] = parts;
+    return `${day}-${month}-${year}`;
   };
 
-  const navigateToDetail = (eventActivityId) => {
-    // Chuyển hướng đến trang chi tiết với eventActivityId
-    router.push(`/screens/MyDetailEventActivity?eventActivityId=${eventActivityId}`);
+  const navigateToDetail = (eventActivityId, date) => {
+    router.push({
+      pathname: '/screens/MyDetailEventActivity',
+      params: {
+        eventActivityId,
+        date,
+      },
+    });
   };
 
   const handleFilterChange = (status) => {
@@ -108,18 +121,15 @@ const EventActivityStatus = () => {
   return (
     <View style={styles.container}>
       <View style={styles.filterContainer}>
-        <TouchableOpacity onPress={() => handleFilterChange('all')} style={[styles.filterButton, filter === 'all' && styles.selectedFilter]}>
-          <Text style={styles.filterText}>Tất cả</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleFilterChange('Đã qua')} style={[styles.filterButton, filter === 'Đã qua' && styles.selectedFilter]}>
-          <Text style={styles.filterText}>Đã qua</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleFilterChange('Sắp tới')} style={[styles.filterButton, filter === 'Sắp tới' && styles.selectedFilter]}>
-          <Text style={styles.filterText}>Sắp tới</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleFilterChange('Đang diễn ra')} style={[styles.filterButton, filter === 'Đang diễn ra' && styles.selectedFilter]}>
-          <Text style={styles.filterText}>Đang diễn ra</Text>
-        </TouchableOpacity>
+        {['all', 'Đã qua', 'Sắp tới', 'Đang diễn ra'].map(status => (
+          <TouchableOpacity
+            key={status}
+            onPress={() => handleFilterChange(status)}
+            style={[styles.filterButton, filter === status && styles.selectedFilter]}
+          >
+            <Text style={styles.filterText}>{status === 'all' ? 'Tất cả' : status}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -128,10 +138,18 @@ const EventActivityStatus = () => {
             <Image source={{ uri: event.url }} style={styles.eventImage} />
             <Text style={styles.eventName}>{event.eventName}</Text>
             {event.eventActivities.map((activity, idx) => (
-              <TouchableOpacity key={idx} onPress={() => navigateToDetail(activity.eventActivityId)} style={styles.activityContainer}>
+              <TouchableOpacity
+                key={idx}
+                onPress={() => navigateToDetail(activity.eventActivityId, activity.date)}
+                style={styles.activityContainer}
+              >
                 <Text style={styles.activityName}>{activity.eventActivityName}</Text>
-                <Text style={[styles.activityStatus, { color: getStatusColor(activity.status) }]}>{activity.status}</Text>
-                <Text style={styles.activityDate}>{activity.formattedDate} - {activity.startTime} to {activity.endTime}</Text>
+                <Text style={[styles.activityStatus, { color: getStatusColor(activity.status) }]}>
+                  {activity.status}
+                </Text>
+                <Text style={styles.activityDate}>
+                  {activity.formattedDate} - {activity.startTime} đến {activity.endTime}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -143,14 +161,10 @@ const EventActivityStatus = () => {
 
 const getStatusColor = (status) => {
   switch (status) {
-    case 'Đã qua':
-      return '#757575'; // Màu xám cho đã qua
-    case 'Đang diễn ra':
-      return '#FF8A00'; // Màu cam cho đang diễn ra
-    case 'Sắp tới':
-      return '#4CAF50'; // Màu xanh lá cho sắp tới
-    default:
-      return '#FFFFFF'; // Mặc định là trắng
+    case 'Đã qua': return '#757575';
+    case 'Đang diễn ra': return '#FF8A00';
+    case 'Sắp tới': return '#4CAF50';
+    default: return '#FFFFFF';
   }
 };
 
@@ -172,14 +186,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   filterContainer: {
-    width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-evenly',
-    marginBottom: 10,
-    backgroundColor: '#1e1e1e',
     paddingVertical: 10,
-    zIndex: 1,  // Đảm bảo filter luôn nằm trên nội dung
+    backgroundColor: '#1e1e1e',
   },
   filterButton: {
     paddingVertical: 10,
@@ -188,9 +199,11 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     borderWidth: 1,
     borderColor: '#444444',
+    marginHorizontal: 5,
+    marginBottom: 5,
   },
   selectedFilter: {
-    backgroundColor: '#FF8A00', // Màu cam khi chọn
+    backgroundColor: '#FF8A00',
     borderColor: '#FF8A00',
   },
   filterText: {
@@ -211,15 +224,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e1e1e',
     padding: 20,
     borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
   },
   eventImage: {
     width: '100%',
-    height: 250, // Kích thước của ảnh thu nhỏ
+    height: 250,
     borderRadius: 10,
     marginBottom: 12,
   },
