@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image, Button } from 'react-native';
+import { useRouter } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage'; // Đảm bảo đã cài thư viện này
 
@@ -8,6 +9,7 @@ const EventActivityStatus = () => {
   const [loading, setLoading] = useState(true);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [filter, setFilter] = useState('all');  // Lọc theo trạng thái: 'all', 'past', 'upcoming', 'ongoing'
+  const router = useRouter();
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -71,6 +73,11 @@ const EventActivityStatus = () => {
     return `${day}-${month}-${year}`;  // Đổi định dạng yyyy-mm-dd thành dd-mm-yyyy
   };
 
+  const navigateToDetail = (eventActivityId) => {
+    // Chuyển hướng đến trang chi tiết với eventActivityId
+    router.push(`/screens/MyDetailEventActivity?eventActivityId=${eventActivityId}`);
+  };
+
   const handleFilterChange = (status) => {
     setFilter(status);
     if (status === 'all') {
@@ -86,6 +93,14 @@ const EventActivityStatus = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FF8A00" />
+      </View>
+    );
+  }
+
+  if (filteredEvents.length === 0) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.noEventsText}>Không có sự kiện</Text>
       </View>
     );
   }
@@ -113,11 +128,11 @@ const EventActivityStatus = () => {
             <Image source={{ uri: event.url }} style={styles.eventImage} />
             <Text style={styles.eventName}>{event.eventName}</Text>
             {event.eventActivities.map((activity, idx) => (
-              <View key={idx} style={styles.activityContainer}>
+              <TouchableOpacity key={idx} onPress={() => navigateToDetail(activity.eventActivityId)} style={styles.activityContainer}>
                 <Text style={styles.activityName}>{activity.eventActivityName}</Text>
                 <Text style={[styles.activityStatus, { color: getStatusColor(activity.status) }]}>{activity.status}</Text>
                 <Text style={styles.activityDate}>{activity.formattedDate} - {activity.startTime} to {activity.endTime}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         ))}
@@ -149,6 +164,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#121212',
+  },
+  noEventsText: {
+    fontSize: 18,
+    color: 'white',
+    textAlign: 'center',
+    marginTop: 20,
   },
   filterContainer: {
     width: '100%',
