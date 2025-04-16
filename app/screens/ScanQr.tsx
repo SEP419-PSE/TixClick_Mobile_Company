@@ -2,6 +2,8 @@ import { CameraView, CameraType, useCameraPermissions, BarcodeScanningResult } f
 import { useState } from 'react';
 import { ActivityIndicator, Button, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext'; // Nhớ import
+import { MaterialIcons } from '@expo/vector-icons';
+
 
 const styles = StyleSheet.create({
   container: {
@@ -16,7 +18,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: '#00FF00',
+    borderColor: '#ff8a00',
   },
   camera: {
     flex: 1,
@@ -29,13 +31,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   button: {
-    backgroundColor: '#0066CC', // Màu xanh đẹp hơn cho button
+    backgroundColor: 'white', // Màu xanh đẹp hơn cho button
     padding: 10,
     borderRadius: 8,
     marginTop: 10,
+    opacity: 0.2, // Độ trong suốt cho button
   },
   text: {
-    color: 'white',
+    color: 'black',
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -100,7 +103,6 @@ export default function App() {
       console.log('📦 QR Data:', result.data);
 
       if (!token) {
-        Alert.alert('Lỗi', 'Bạn chưa đăng nhập!');
         setScanned(false);
         return;
       }
@@ -132,16 +134,14 @@ export default function App() {
 
           } else {
             console.error('⚠️ Decryption failed:', json.message);
-            Alert.alert('Lỗi', json.message || 'Không giải mã được QR code');
           }
         } catch (err) {
           console.error('❌ JSON parse error:', text);
-          Alert.alert('Lỗi', 'Phản hồi không hợp lệ (không phải JSON)');
         }
 
       } catch (error) {
         console.error('❌ API error:', error);
-        Alert.alert('Lỗi', 'Không thể kết nối đến máy chủ');
+        // Alert.alert('Lỗi', 'Không thể kết nối đến máy chủ');
       }
 
       setLoading(false); // Kết thúc loading sau khi nhận được phản hồi
@@ -161,8 +161,8 @@ export default function App() {
           onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
         />
         <View style={styles.overlay}>
-          <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
-            <Text style={styles.text}>Flip Camera</Text>
+          <TouchableOpacity  onPress={toggleCameraFacing}>
+            <MaterialIcons name="flip-camera-ios" size={40} color="#fff" style={{opacity: 20, }} />
           </TouchableOpacity>
         </View>
       </View>
@@ -189,9 +189,9 @@ export default function App() {
                 width: '100%',
 
               }}>
-              <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
-                <Text style={styles.closeText}>Close</Text>
-              </TouchableOpacity>
+                <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
+                  <Text style={styles.closeText}>Close</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>

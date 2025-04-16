@@ -1,7 +1,8 @@
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ImageBackground, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { useState } from 'react';
+import { Video } from 'expo-av';
 import { login as loginService } from '../../services/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -12,7 +13,6 @@ export default function LoginScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false); // State for success modal
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -26,17 +26,13 @@ export default function LoginScreen() {
 
       if (res.success && res.data) {
         console.log('Login success');
-        setShowSuccessModal(true); // Show success modal
-        setTimeout(() => {
-          setShowSuccessModal(false); // Hide the modal after 1 second
-          router.replace('/screens/ScanQr');
-        }, 1000); // Show modal for 1 second
-
+        Alert.alert('Đăng nhập thành công');
         await saveToken(res.data.accessToken, res.data.role);
         const storedToken = await AsyncStorage.getItem('token');
         const storedRole = await AsyncStorage.getItem('role');
         console.log('Stored Token in AsyncStorage:', storedToken);
         console.log('Stored Role in AsyncStorage:', storedRole);
+        router.replace('/screens/HoneScreen');
       } else {
         Alert.alert('Đăng nhập thất bại', res.message || 'Có lỗi xảy ra');
       }
@@ -48,91 +44,152 @@ export default function LoginScreen() {
   };
 
   return (
-    <ImageBackground
-      source={{
-        uri: 'https://images.pexels.com/photos/15036701/pexels-photo-15036701/free-photo-of-a-seagull-is-standing-on-a-ledge-in-front-of-a-christmas-tree.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-      }}
-      style={{ flex: 1 }}
-      resizeMode="cover"
-    >
+    <View style={styles.container}>
+      <Video
+        source={{
+          uri: 'https://videos.pexels.com/video-files/2022395/2022395-hd_1920_1080_30fps.mp4',
+        }}
+        rate={1.0}
+        volume={1.0}
+        isMuted={false}
+        resizeMode="cover" // Video background will cover the screen
+        shouldPlay
+        isLooping
+        style={styles.backgroundVideo}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          paddingHorizontal: 24,
-          backgroundColor: 'rgba(0,0,0,0.4)', // overlay mờ màu đen
-        }}
+        style={styles.overlayContainer}
       >
-        <Text className="text-2xl font-bold mb-8 text-white">Login</Text>
+        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.subtitle}>Please log in to continue</Text>
+        
         <TextInput
-          className="border border-gray-300 rounded-xl px-4 py-3 mb-4 text-black bg-white/80"
+          style={styles.input}
           placeholder="Email"
-          placeholderTextColor="#999"
+          placeholderTextColor="#ccc"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
         />
-        <View className="relative mb-6">
+        
+        <View style={styles.passwordContainer}>
           <TextInput
-            className="border border-gray-300 rounded-xl px-4 py-3 pr-12 text-black bg-white/80"
+            style={styles.input}
             placeholder="Password"
-            placeholderTextColor="#999"
+            placeholderTextColor="#ccc"
             secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
           />
           <TouchableOpacity
             onPress={() => setShowPassword(!showPassword)}
-            className="absolute right-4 top-1/2 -translate-y-1/2"
+            style={styles.eyeIcon}
           >
-            <Text className="text-blue-500">{showPassword ? '🙈' : '👁️'}</Text>
+            <Text style={styles.eyeIconText}>{showPassword ? '🙈' : '👁️'}</Text>
           </TouchableOpacity>
         </View>
-
+        
         <TouchableOpacity
           onPress={handleLogin}
-          className={`bg-blue-500 py-3 rounded-xl ${loading ? 'opacity-50' : ''}`}
+          style={[styles.button, { opacity: loading ? 0.5 : 1 }]}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-center text-white font-semibold">Đăng nhập</Text>
+            <Text style={styles.buttonText}>Log In</Text>
           )}
         </TouchableOpacity>
 
-        {/* Success Modal */}
-        <Modal
-          transparent={true}
-          visible={showSuccessModal}
-          animationType="fade"
-          onRequestClose={() => setShowSuccessModal(false)}
-        >
-          <View
-            style={{
-              flex: 1,
-              justifyContent: 'center',
-              alignItems: 'center',
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: '#4CAF50',
-                padding: 20,
-                borderRadius: 10,
-                width: '80%',
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
-                Đăng nhập thành công!
-              </Text>
-            </View>
-          </View>
-        </Modal>
+        
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  backgroundVideo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlayContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Overlay black color
+    borderRadius: 20,
+    width: '100%',
+    height: '100%',
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#fff',
+    marginBottom: 20,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    width: '100%',
+    marginBottom: 16,
+    color: '#333',
+    fontSize: 16,
+  },
+  passwordContainer: {
+    position: 'relative',
+    width: '100%',
+    marginBottom: 24,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    transform: [{ translateY: -20}],
+    
+    
+  },
+  eyeIconText: {
+    fontSize: 20,
+    color: '#007BFF',
+    
+
+  },
+  button: {
+    backgroundColor: '#FF8C00',
+    paddingVertical: 14, // Adjust padding to match input size
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 16, // Add margin for spacing between button and register link
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  registerLink: {
+    marginTop: 16,
+  },
+  registerText: {
+    color: '#FF8C00',
+    fontWeight: 'bold',
+    textDecorationLine: 'underline',
+  },
+});
