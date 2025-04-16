@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { useState } from 'react';
@@ -13,33 +13,45 @@ export default function LoginScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Vui lòng nhập đầy đủ email và mật khẩu');
+      setMessage('Vui lòng nhập đầy đủ email và mật khẩu');
+      setMessageType('error');
       return;
     }
 
     setLoading(true);
+    setMessage('');
+    setMessageType('');
     try {
       const res = await loginService(email, password);
 
       if (res.success && res.data) {
-        console.log('Login success');
-        Alert.alert('Đăng nhập thành công');
+        setMessage('Đăng nhập thành công');
+        setMessageType('success');
+
         await saveToken(res.data.accessToken, res.data.role);
-        const storedToken = await AsyncStorage.getItem('token');
-        const storedRole = await AsyncStorage.getItem('role');
-        console.log('Stored Token in AsyncStorage:', storedToken);
-        console.log('Stored Role in AsyncStorage:', storedRole);
-        router.replace('/screens/HoneScreen');
+        await AsyncStorage.getItem('token');
+        await AsyncStorage.getItem('role');
+        setTimeout(() => {
+          router.replace('/screens/HoneScreen');
+        }, 1000);
       } else {
-        Alert.alert('Đăng nhập thất bại', res.message || 'Có lỗi xảy ra');
+        setMessage(res.message || 'Đăng nhập thất bại');
+        setMessageType('error');
       }
     } catch (err: any) {
-      Alert.alert('Lỗi mạng', err.message);
+      setMessage('Lỗi mạng. Vui lòng thử lại.');
+      setMessageType('error');
     } finally {
       setLoading(false);
+      setTimeout(() => {
+        setMessage('');
+        setMessageType('');
+      }, 3000);
     }
   };
 
@@ -52,7 +64,7 @@ export default function LoginScreen() {
         rate={1.0}
         volume={1.0}
         isMuted={false}
-        resizeMode="cover" // Video background will cover the screen
+        resizeMode="cover"
         shouldPlay
         isLooping
         style={styles.backgroundVideo}
@@ -63,7 +75,18 @@ export default function LoginScreen() {
       >
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Please log in to continue</Text>
-        
+
+        {message ? (
+          <View
+            style={[
+              styles.toastBox,
+              messageType === 'error' ? styles.toastError : styles.toastSuccess,
+            ]}
+          >
+            <Text style={styles.toastText}>{message}</Text>
+          </View>
+        ) : null}
+
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -72,7 +95,7 @@ export default function LoginScreen() {
           onChangeText={setEmail}
           autoCapitalize="none"
         />
-        
+
         <View style={styles.passwordContainer}>
           <TextInput
             style={styles.input}
@@ -86,10 +109,12 @@ export default function LoginScreen() {
             onPress={() => setShowPassword(!showPassword)}
             style={styles.eyeIcon}
           >
-            <Text style={styles.eyeIconText}>{showPassword ? '🙈' : '👁️'}</Text>
+            <Text style={styles.eyeIconText}>
+              {showPassword ? '🙈' : '👁️'}
+            </Text>
           </TouchableOpacity>
         </View>
-        
+
         <TouchableOpacity
           onPress={handleLogin}
           style={[styles.button, { opacity: loading ? 0.5 : 1 }]}
@@ -101,8 +126,6 @@ export default function LoginScreen() {
             <Text style={styles.buttonText}>Log In</Text>
           )}
         </TouchableOpacity>
-
-        
       </KeyboardAvoidingView>
     </View>
   );
@@ -126,7 +149,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Overlay black color
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     borderRadius: 20,
     width: '100%',
     height: '100%',
@@ -141,6 +164,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     marginBottom: 20,
+  },
+  toastBox: {
+    width: '100%',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  toastSuccess: {
+    backgroundColor: '#28a745',
+  },
+  toastError: {
+    backgroundColor: '#dc3545',
+  },
+  toastText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   input: {
     backgroundColor: '#fff',
@@ -161,23 +202,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     top: '50%',
-    transform: [{ translateY: -20}],
-    
-    
+    transform: [{ translateY: -20 }],
   },
   eyeIconText: {
     fontSize: 20,
     color: '#007BFF',
-    
-
   },
   button: {
     backgroundColor: '#FF8C00',
-    paddingVertical: 14, // Adjust padding to match input size
+    paddingVertical: 14,
     borderRadius: 8,
     width: '100%',
     alignItems: 'center',
-    marginBottom: 16, // Add margin for spacing between button and register link
+    marginBottom: 16,
   },
   buttonText: {
     color: '#fff',

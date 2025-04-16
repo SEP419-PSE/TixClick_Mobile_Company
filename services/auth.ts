@@ -1,26 +1,36 @@
 export const login = async (userName: string, password: string) => {
-
+  try {
     const response = await fetch('https://tixclick.site/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ userName, password }), // dùng userName thay vì email
+      body: JSON.stringify({ userName, password }),
     });
 
     const data = await response.json();
 
     if (data.code === 200) {
-      return {
-        success: true,
-        data: {
-          accessToken: data.result.accessToken,
-          refreshToken: data.result.refreshToken,
-          role: data.result.roleName,
-          status: data.result.status,
-        },
-        message: data.message,
-      };
+      const { accessToken, refreshToken, roleName, status } = data.result;
+
+      if (roleName === 'ORGANIZER') {
+        return {
+          success: true,
+          data: {
+            accessToken,
+            refreshToken,
+            role: roleName,
+            status,
+          },
+          message: data.message,
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Bạn không có quyền truy cập. Chỉ tài khoản ORGANIZER được phép đăng nhập.',
+          code: 403,
+        };
+      }
     } else {
       return {
         success: false,
@@ -28,5 +38,11 @@ export const login = async (userName: string, password: string) => {
         code: data.code,
       };
     }
-  
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Đã xảy ra lỗi khi kết nối đến máy chủ.',
+      code: 500,
+    };
+  }
 };
