@@ -74,7 +74,7 @@ export default function Home() {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => router.push(`/screens/MyCompany?userName=${profile?.userName}`)}
+        onPress={() => router.push(`/screens/MyEvent`)}
       >
         <Text style={styles.buttonText}>Sự kiện của tôi</Text>
       </TouchableOpacity>

@@ -33,9 +33,6 @@ export default function MyCompany() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backText}>← Quay lại trang chính</Text>
-      </TouchableOpacity>
 
       <Text style={styles.title}>Công ty của tôi</Text>
 
