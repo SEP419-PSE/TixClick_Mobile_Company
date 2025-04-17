@@ -89,7 +89,7 @@ export default function LoginScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder="Username"
           placeholderTextColor="#ccc"
           value={email}
           onChangeText={setEmail}

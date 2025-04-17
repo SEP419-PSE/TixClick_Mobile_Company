@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/MaterialIcons'; // Import Icon library
 
 const EventActivityStatus = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [expandedEvents, setExpandedEvents] = useState([]); // NEW
   const router = useRouter();
+
+  interface EventId {
+    eventId: number;
+  }
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -32,19 +38,18 @@ const EventActivityStatus = () => {
               const activityDate = new Date(`${activity.date}T${activity.startTime}`);
               const endDate = new Date(`${activity.date}T${activity.endTime}`);
               const now = new Date();
+              setEvents(response.data.result.eventId); // Lưu eventId vào state
 
               let status = '';
-              if (activityDate < now) {
+              if (activityDate < now && endDate < now) {
                 status = 'Đã qua';
-              }
-              if (
+              } else if (
                 activityDate.toDateString() === now.toDateString() &&
                 now >= activityDate &&
                 now <= endDate
               ) {
                 status = 'Đang diễn ra';
-              }
-              if (activityDate > now) {
+              } else if (activityDate > now) {
                 status = 'Sắp tới';
               }
 
@@ -91,29 +96,70 @@ const EventActivityStatus = () => {
     });
   };
 
+  const navigateToDetailEvent = (eventId, status) => {
+    router.push({
+      pathname: '/screens/MyEventDetail',
+      params: {
+        eventId,
+        status
+      },
+    });
+
+  }
+
   const handleFilterChange = (status) => {
     setFilter(status);
+    setExpandedEvents([]); // reset khi đổi bộ lọc
+
     if (status === 'all') {
       setFilteredEvents(events);
     } else {
-      setFilteredEvents(events.filter(event =>
-        event.eventActivities.some(activity => activity.status === status)
-      ));
+      const filtered = events
+        .map(event => {
+          const matchingActivities = event.eventActivities.filter(activity => activity.status === status);
+          return matchingActivities.length > 0
+            ? { ...event, eventActivities: matchingActivities }
+            : null;
+        })
+        .filter(e => e !== null);
+
+      setFilteredEvents(filtered);
     }
   };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Đã qua': return '#757575';
+      case 'Đang diễn ra': return '#FF8A00';
+      case 'Sắp tới': return '#4CAF50';
+      default: return '#FFFFFF';
+    }
+  };
+
+  const toggleExpand = (index) => {
+    if (expandedEvents.includes(index)) {
+      setExpandedEvents(expandedEvents.filter(i => i !== index));
+    } else {
+      setExpandedEvents([...expandedEvents, index]);
+    }
+  };
+
+  const showEventDetails = (eventId, status) => {
+    Alert.alert(
+      'Thông tin sự kiện',
+      'Bạn muốn xem chi tiết sự kiện này?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Xem chi tiết', onPress: () => navigateToDetailEvent(eventId, status) },
+      ]
+    );
+  };
+
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FF8A00" />
-      </View>
-    );
-  }
-
-  if (filteredEvents.length === 0) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.noEventsText}>Không có sự kiện</Text>
       </View>
     );
   }
@@ -132,40 +178,46 @@ const EventActivityStatus = () => {
         ))}
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {filteredEvents.map((event, index) => (
-          <View key={index} style={styles.eventContainer}>
-            <Image source={{ uri: event.url }} style={styles.eventImage} />
-            <Text style={styles.eventName}>{event.eventName}</Text>
-            {event.eventActivities.map((activity, idx) => (
-              <TouchableOpacity
-                key={idx}
-                onPress={() => navigateToDetail(activity.eventActivityId, activity.date)}
-                style={styles.activityContainer}
-              >
-                <Text style={styles.activityName}>{activity.eventActivityName}</Text>
-                <Text style={[styles.activityStatus, { color: getStatusColor(activity.status) }]}>
-                  {activity.status}
-                </Text>
-                <Text style={styles.activityDate}>
-                  {activity.formattedDate} - {activity.startTime} đến {activity.endTime}
-                </Text>
+      {filteredEvents.length === 0 ? (
+        <View style={styles.noEventsContainer}>
+          <Text style={styles.noEventsText}>Không có sự kiện {filter === 'all' ? '' : `trạng thái "${filter}"`}</Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          {filteredEvents.map((event, index) => (
+            <View key={index} style={styles.eventContainer}>
+              <TouchableOpacity onPress={() => toggleExpand(index)}>
+                <Image source={{ uri: event.url }} style={styles.eventImage} resizeMode="contain" />
+                <Text style={styles.eventName}>{event.eventName}</Text>
+                {/* Thêm icon ba chấm để hiển thị menu chi tiết */}
+                <TouchableOpacity onPress={() => showEventDetails(event.eventId, event.eventActivities[0]?.status)}
+                  style={styles.threeDotsIcon}>
+                  <Icon name="more-vert" size={30} color="white" />
+                </TouchableOpacity>
+
               </TouchableOpacity>
-            ))}
-          </View>
-        ))}
-      </ScrollView>
+
+
+              {expandedEvents.includes(index) &&
+                event.eventActivities.map((activity, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={() => navigateToDetail(activity.eventActivityId, activity.date)}
+                    style={styles.activityContainer}
+                  >
+                    <Text style={styles.activityName}>{activity.eventActivityName}</Text>
+                    <Text style={[styles.activityStatus, { color: getStatusColor(activity.status) }]}>{activity.status}</Text>
+                    <Text style={styles.activityDate}>
+                      {activity.formattedDate} - {activity.startTime} đến {activity.endTime}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </View>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
-};
-
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'Đã qua': return '#757575';
-    case 'Đang diễn ra': return '#FF8A00';
-    case 'Sắp tới': return '#4CAF50';
-    default: return '#FFFFFF';
-  }
 };
 
 const styles = StyleSheet.create({
@@ -179,11 +231,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#121212',
   },
+  noEventsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginTop: 30,
+  },
   noEventsText: {
     fontSize: 18,
     color: 'white',
     textAlign: 'center',
-    marginTop: 20,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -227,17 +283,19 @@ const styles = StyleSheet.create({
   },
   eventImage: {
     width: '100%',
-    height: 250,
+    aspectRatio: 720 / 958,
     borderRadius: 10,
     marginBottom: 12,
+    backgroundColor: '#000',
   },
   eventName: {
     fontSize: 22,
     color: '#FF8A00',
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   activityContainer: {
+    marginTop: 10,
     marginBottom: 16,
     backgroundColor: '#333333',
     padding: 14,
@@ -259,6 +317,12 @@ const styles = StyleSheet.create({
   activityDate: {
     fontSize: 14,
     color: '#C7C7C7',
+  },
+  threeDotsIcon: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+
   },
 });
 
