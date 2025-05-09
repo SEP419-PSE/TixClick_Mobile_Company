@@ -38,7 +38,7 @@ export default function EventActivityStats() {
         if (eventActivityId) {
             fetchCheckinStats();
         }
-    }, [eventActivityId]);
+    });
 
     const handleScanQR = () => {
         router.push('/screens/ScanQr');
