@@ -1,9 +1,8 @@
 import { CameraView, CameraType, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { useState } from 'react';
 import { ActivityIndicator, Button, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useAuth } from '../../context/AuthContext'; // Nhớ import
+import { useAuth } from '../../context/AuthContext';
 import { MaterialIcons } from '@expo/vector-icons';
-
 
 const styles = StyleSheet.create({
   container: {
@@ -31,11 +30,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   button: {
-    backgroundColor: 'white', // Màu xanh đẹp hơn cho button
+    backgroundColor: 'white',
     padding: 10,
     borderRadius: 8,
     marginTop: 10,
-    opacity: 0.2, // Độ trong suốt cho button
+    opacity: 0.2,
   },
   text: {
     color: 'black',
@@ -46,19 +45,26 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     padding: 20,
     borderRadius: 10,
-    alignItems: 'flex-start', // Căn lề trái
-    width: 300, // Đảm bảo modal có độ rộng vừa đủ
+    alignItems: 'flex-start',
+    width: 300,
   },
   modalText: {
     fontSize: 16,
     marginBottom: 10,
-    textAlign: 'left', // Căn lề trái cho tất cả các dòng
+    textAlign: 'left',
+  },
+  errorModalText: {
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: 'center',
+    color: 'red',
   },
   closeButton: {
     backgroundColor: '#00FF00',
     padding: 10,
     borderRadius: 8,
     marginTop: 10,
+    alignSelf: 'center',
   },
   closeText: {
     color: 'white',
@@ -69,6 +75,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 20,
   },
+  statusText: {
+    color: 'white',
+    fontWeight: 'bold',
+    marginTop: 10,
+    fontSize: 16,
+  },
 });
 
 export default function App() {
@@ -76,9 +88,11 @@ export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [ticketInfo, setTicketInfo] = useState<any>(null);
-  const [loading, setLoading] = useState(false); // Trạng thái loading
-  const { token } = useAuth(); // Đặt ở đầu component
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const { token } = useAuth();
 
   if (!permission) {
     return <View />;
@@ -103,49 +117,51 @@ export default function App() {
       console.log('📦 QR Data:', result.data);
 
       if (!token) {
+        setErrorMessage('Không có token xác thực. Vui lòng đăng nhập lại.');
+        setErrorModalVisible(true);
         setScanned(false);
         return;
       }
 
-      setLoading(true); // Bắt đầu loading khi gọi API
+      setLoading(true);
 
       try {
         const response = await fetch('https://tixclick.site/api/ticket-purchase/decrypt_qr_code', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`, // ✅ thêm token ở đây
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify(result.data),
         });
 
-        const text = await response.text(); // Đọc response dạng text
+        const text = await response.text();
 
         try {
-          const json = JSON.parse(text); // Parse JSON thủ công để bắt lỗi định dạng
+          const json = JSON.parse(text);
 
           if (json.code === 200 && json.result) {
             const ticket = json.result;
-
             console.log('✅ Decrypted Ticket Info:', ticket);
-
             setTicketInfo(ticket);
-            setModalVisible(true); // Hiển thị modal
-
+            setModalVisible(true);
           } else {
-            console.error('⚠️ Decryption failed:', json.message);
+            setErrorMessage(json.message || 'Không thể giải mã mã QR.');
+            setErrorModalVisible(true);
           }
         } catch (err) {
           console.error('❌ JSON parse error:', text);
+          setErrorMessage('Dữ liệu trả về không hợp lệ.');
+          setErrorModalVisible(true);
         }
-
       } catch (error) {
         console.error('❌ API error:', error);
-        // Alert.alert('Lỗi', 'Không thể kết nối đến máy chủ');
+        setErrorMessage('Không thể kết nối đến máy chủ. Vui lòng thử lại.');
+        setErrorModalVisible(true);
       }
 
-      setLoading(false); // Kết thúc loading sau khi nhận được phản hồi
-      setTimeout(() => setScanned(false), 3000); // Cho phép quét lại
+      setLoading(false);
+      setTimeout(() => setScanned(false), 3000); // Reset scan after 3 seconds
     }
   };
 
@@ -161,13 +177,21 @@ export default function App() {
           onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
         />
         <View style={styles.overlay}>
-          <TouchableOpacity  onPress={toggleCameraFacing}>
-            <MaterialIcons name="flip-camera-ios" size={40} color="#fff" style={{opacity: 20, }} />
+          <TouchableOpacity onPress={toggleCameraFacing}>
+            <MaterialIcons name="flip-camera-ios" size={40} color="#fff" style={{ opacity: 0.8 }} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Modal to show ticket information */}
+      {/* Scanner readiness status */}
+      <Text style={styles.statusText}>
+        {scanned ? 'Đang xử lý, vui lòng chờ...' : 'Sẵn sàng quét mã QR'}
+      </Text>
+
+      {/* Loading indicator */}
+      {loading && <Text style={styles.loadingText}>Đang tải thông tin...</Text>}
+
+      {/* Ticket info modal */}
       {ticketInfo && (
         <Modal
           animationType="slide"
@@ -183,23 +207,30 @@ export default function App() {
               <Text style={styles.modalText}>🪑 Ghế: {ticketInfo.seat_code ?? 'Không có'}</Text>
               <Text style={styles.modalText}>👤 Người đặt: {ticketInfo.account_name}</Text>
               <Text style={styles.modalText}>📧 Email: {ticketInfo.email}</Text>
-              <View style={{
-                flexDirection: 'row',
-                justifyContent: 'center',
-                width: '100%',
-
-              }}>
-                <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
-                  <Text style={styles.closeText}>Close</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
+                <Text style={styles.closeText}>Close</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
       )}
 
-      {/* Hiển thị loading khi đang gọi API */}
-      {loading && <Text style={styles.loadingText}>Đang tải thông tin...</Text>}
+      {/* Error modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={errorModalVisible}
+        onRequestClose={() => setErrorModalVisible(false)}
+      >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <View style={styles.modalView}>
+            <Text style={styles.errorModalText}>❌ Lỗi: {errorMessage}</Text>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setErrorModalVisible(false)}>
+              <Text style={styles.closeText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
