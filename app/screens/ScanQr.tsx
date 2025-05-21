@@ -129,10 +129,11 @@ export default function App() {
         const response = await fetch('https://tixclick.site/api/ticket-purchase/decrypt_qr_code', {
           method: 'POST',
           headers: {
+            'accept': '*/*',
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify(result.data),
+          body: JSON.stringify({ qrCode: result.data }),
         });
 
         const text = await response.text();
@@ -201,12 +202,21 @@ export default function App() {
         >
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
             <View style={styles.modalView}>
-              <Text style={styles.modalText}>✔ Sự kiện: {ticketInfo.event_name}</Text>
-              <Text style={styles.modalText}>🪪 Vé: {ticketInfo.ticket_name}</Text>
-              <Text style={styles.modalText}>📍 Khu: {ticketInfo.zone_name}</Text>
-              <Text style={styles.modalText}>🪑 Ghế: {ticketInfo.seat_code ?? 'Không có'}</Text>
-              <Text style={styles.modalText}>👤 Người đặt: {ticketInfo.account_name}</Text>
-              <Text style={styles.modalText}>📧 Email: {ticketInfo.email}</Text>
+              <Text style={styles.modalText}>✔ Sự kiện: {ticketInfo.eventName}</Text>
+              <Text style={styles.modalText}>👤 Người đặt: {ticketInfo.fullName}</Text>
+              <Text style={styles.modalText}>📧 Mã đơn: {ticketInfo.orderCode}</Text>
+              {ticketInfo.ticketDetails && ticketInfo.ticketDetails.length > 0 && (
+                <>
+                  <Text style={[styles.modalText, { fontWeight: 'bold', marginTop: 10 }]}>Danh sách vé:</Text>
+                  {ticketInfo.ticketDetails.map((ticket: any, index: number) => (
+                    <View key={ticket.ticketPurchaseId} style={{ marginLeft: 10 }}>
+                      <Text style={styles.modalText}>🪪 Vé {index + 1}: {ticket.ticketType ?? 'Không có'}</Text>
+                      <Text style={styles.modalText}>📍 Khu: {ticket.zoneName ?? 'Không có'}</Text>
+                      <Text style={styles.modalText}>🪑 Ghế: {ticket.seatName ?? 'Không có'}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
               <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
                 <Text style={styles.closeText}>Close</Text>
               </TouchableOpacity>

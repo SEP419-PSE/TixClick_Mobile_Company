@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 interface Stats {
-    totalCheckin: number,
-    checkedIn: number,
-    notCheckedIn: number,
+    totalCheckin: number;
+    checkedIn: number;
+    notCheckedIn: number;
 }
 
 export default function EventActivityStats() {
@@ -16,29 +17,32 @@ export default function EventActivityStats() {
     const [stats, setStats] = useState<Stats>();
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchCheckinStats = async () => {
-            console.log("eventActivityId: ", eventActivityId);
+    const fetchCheckinStats = useCallback(async () => {
+        console.log("eventActivityId: ", eventActivityId);
 
-            try {
-                const response = await axios.get(`https://tixclick.site/api/event/checkin/event-activity/${eventActivityId}`);
-                console.log("Response: ", response.data);
-                if (response.data.code === 200) {
-                    setStats(response.data.result);
-                } else {
-                    console.log("Error fetching stats: ", response.data.message);
-                }
-            } catch (error) {
-                console.error("Error calling API: ", error);
-            } finally {
-                setLoading(false);
+        try {
+            setLoading(true);
+            const response = await axios.get(`https://tixclick.site/api/event/checkin/event-activity/${eventActivityId}`);
+            console.log("Response: ", response.data);
+            if (response.data.code === 200) {
+                setStats(response.data.result);
+            } else {
+                console.log("Error fetching stats: ", response.data.message);
             }
-        };
-
-        if (eventActivityId) {
-            fetchCheckinStats();
+        } catch (error) {
+            console.error("Error calling API: ", error);
+        } finally {
+            setLoading(false);
         }
-    });
+    }, [eventActivityId]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (eventActivityId) {
+                fetchCheckinStats();
+            }
+        }, [eventActivityId, fetchCheckinStats])
+    );
 
     const handleScanQR = () => {
         router.push('/screens/ScanQr');
@@ -67,7 +71,6 @@ export default function EventActivityStats() {
 
         return today.toDateString() === compareDate.toDateString();
     };
-
 
     if (loading) {
         return (
